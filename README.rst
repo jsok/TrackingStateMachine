@@ -9,13 +9,8 @@ Requirements
 
 * Python 2.7
 
-Overview
-========
-
-Tracking
-
 Quickstart
-==========
+----------
 
 The basic concepts in TSM are:
  * TrackingStateMachine: The manager object which contains all state objects and initiates transitions.
@@ -25,12 +20,12 @@ The basic concepts in TSM are:
 Defining States and Items
 -------------------------
 
- First we must describe the items we will be storing in each state::
+First we must describe the items we will be storing in each state::
 
-    class MyItem(TrackingItem):
-        def __init__(self, name):
-            super(self.__class__, self).__init__()
-            self.name = name
+   class MyItem(TrackingItem):
+       def __init__(self, name):
+           super(self.__class__, self).__init__()
+           self.name = name
 
 Here we define a simple item which does nothing but store a name.
 
