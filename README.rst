@@ -164,14 +164,20 @@ To define our transitions, we must create methods in the state with the same nam
 
     class FriendshipState(TrackingState):
         def __remove_name(self, name):
+            if name not in self.items:
+                yield TransitionValidationResult(False, "Person {0} is not known to us".format(name))
+
             position = self.items.index(name)
+
+            # We've made sure person exists and is in this state
+            yield TransitionValidationResult(True, None)
             self.items.pop(position)
 
         def falling_out(self, item):
-            self.__remove_name(item.name)
+            return self.__remove_name(item.name)
 
         def resolve_differences(self, item):
-            self.__remove_name(item.name)
+            return self.__remove_name(item.name)
 
 As with all transitions, they must yield a successful transition validation.
 
