@@ -103,9 +103,11 @@ Transition vs TrackingItem validations
 At this point you may wonder which form of validation to use when?
 
 Item validations are useful for:
+
 * Sanitising your items (correct types, presence of values, bounds checks etc.)
 
 Transition validations are useful for:
+
 * Checking for state internal invariants
 
 Say we modify our example and create a "No Jonathans rule", e.g. one Jonathan is fine, two is not::
@@ -217,5 +219,6 @@ the first time we didn't bother giving a reason because we knew that ``Friendshi
 reason for removing a person.
 
 So we can immediately see some poor design issues cropping up:
+
 * ``Friend`` items are exposed outside of the TSM
 * We must create ``Friend`` items and know which parameters are useful in which context.
