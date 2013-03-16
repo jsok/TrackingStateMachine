@@ -22,7 +22,7 @@ Defining States and Items
 
 First we must describe the items we will be storing in each state::
 
-   class MyItem(TrackingItem):
+   class Friend(TrackingItem):
        def __init__(self, name):
            super(self.__class__, self).__init__()
            self.name = name
@@ -32,9 +32,9 @@ Here we define a simple item which does nothing but store a name.
 
 Next we define a state::
 
-    class MyState(TrackingState):
+    class FriendshipState(TrackingState):
         def __init__(self, name):
-            super(self.__class__, self).__init__(name, MyItem)
+            super(self.__class__, self).__init__(name, Friend)
             self.items = []
 
         def _track(self, item):
@@ -42,7 +42,8 @@ Next we define a state::
             self.items.append(item)
 
 
-This is a a trivial state which stores a list of MyItem's which currently exist in it.
+This is a a trivial state which stores a list of ``Friend``s which currently exist in it.
+
 The ``_track()`` method tells the TSM what to do with items transitioning into this state.
 An important note to make is the ``yield`` statement in ``_track()``::
 
@@ -79,7 +80,7 @@ TrackingItem Validations
 
 Checking the name on each track event is a little bit tedious, therefore TSM provides TrackingItem validations too::
 
-    class MyItem(TrackingItem):
+    class Friend(TrackingItem):
         def __init__(self, name):
             super(self.__class__, self).__init__()
             self.name = name
@@ -107,7 +108,7 @@ Transition validations are useful for:
 
 Say we modify our example and create a "No Jonathans rule", e.g. one Jonathan is fine, two is not::
 
-    class MyItem(TrackingItem):
+    class Friend(TrackingItem):
         def __init__(self, name):
             super(self.__class__, self).__init__()
             self.name = name
@@ -116,9 +117,9 @@ Say we modify our example and create a "No Jonathans rule", e.g. one Jonathan is
                 (lambda item: isinstance(item.name, str)),
             ])
 
-    class MyState(TrackingState):
+    class FriendshipState(TrackingState):
         def __init__(self, name):
-            super(self.__class__, self).__init__(name, MyItem)
+            super(self.__class__, self).__init__(name, Friend)
             self.items = []
 
         def _track(self, item):
@@ -133,3 +134,46 @@ Here we see the guidelines in practise, an item ensures the name is actually a s
 it has no capacity to check if there exists another item also called Jonathan.
 
 The invariant (only one Jonathan) is enforced in the transition validation.
+
+The State Machine
+-----------------
+
+Now that we've defined our state and item, we can describe our state machine.
+
+Let's say we are quite fickle and fall in and out of friendships often::
+
+    tsm = TrackingStateMachine()
+    tsm.add_state(FriendshipState("Friend"))
+    tsm.add_state(FriendshipState("Enemy"))
+
+To describe how people move between being our Friend and Enemy, we add transitions::
+
+    tsm.add_transition("falling_out", "Friend", "Enemy")
+    tsm.add_transition("resolve_differences", "Enemy", "Friend")
+
+However we haven't yet defined in our ``FriendshipState`` how to have a falling out or how to resolve differences.
+
+In general, we say::
+
+    tsm.add_transition(TRANSITION_NAME, FROM_STATE, TO_STATE)
+
+Defining Transitions
+--------------------
+
+To define our transitions, we must create methods in the state with the same name as that registered with the TSM::
+
+    class FriendshipState(TrackingState):
+        def __remove_name(self, name):
+            position = self.items.index(name)
+            self.items.pop(position)
+
+        def falling_out(self, item):
+            self.__remove_name(item.name)
+
+        def resolve_differences(self, item):
+            self.__remove_name(item.name)
+
+As with all transitions, they must yield a successful transition validation.
+
+Notice, these two transitions are fundamentally identical -- removing the person from the state's internal list of
+items. The transition names are simply semantic.
