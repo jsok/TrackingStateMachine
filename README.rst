@@ -23,11 +23,12 @@ Defining States and Items
 First we must describe the items we will be storing in each state::
 
    class Friend(TrackingItem):
-       def __init__(self, name):
+       def __init__(self, name, reason):
            super(self.__class__, self).__init__()
            self.name = name
+           self.reason
 
-Here we define a simple item which does nothing but store a name.
+Here we define a simple item which does nothing but store a name, and a reason why we are friends with them.
 
 
 Next we define a state::
@@ -81,9 +82,10 @@ TrackingItem Validations
 Checking the name on each track event is a little bit tedious, therefore TSM provides TrackingItem validations too::
 
     class Friend(TrackingItem):
-        def __init__(self, name):
+        def __init__(self, name, reason):
             super(self.__class__, self).__init__()
             self.name = name
+            self.reason = reason
 
             self.validations.extend([
                 (lambda item: item.name is not "Jonathan"),
@@ -109,9 +111,10 @@ Transition validations are useful for:
 Say we modify our example and create a "No Jonathans rule", e.g. one Jonathan is fine, two is not::
 
     class Friend(TrackingItem):
-        def __init__(self, name):
+        def __init__(self, name, reason):
             super(self.__class__, self).__init__()
             self.name = name
+            self.reason = reason
 
             self.validations.extend([
                 (lambda item: isinstance(item.name, str)),
@@ -163,15 +166,21 @@ Defining Transitions
 To define our transitions, we must create methods in the state with the same name as that registered with the TSM::
 
     class FriendshipState(TrackingState):
-        def __remove_name(self, name):
-            if name not in self.items:
-                yield TransitionValidationResult(False, "Person {0} is not known to us".format(name))
+        def __know_person(self, name):
+            # Return index of person if we know them, otherwise None
+            for i, person in enumerate(self.items):
+                if person.name == name:
+                    return i
+            return None
 
-            position = self.items.index(name)
+        def __remove_name(self, name):
+            known = self.__know_person(name)
+            if not known:
+                yield TransitionValidationResult(False, "Person {0} is not known to us".format(name))
 
             # We've made sure person exists and is in this state
             yield TransitionValidationResult(True, None)
-            self.items.pop(position)
+            self.items.pop(known)
 
         def falling_out(self, item):
             return self.__remove_name(item.name)
@@ -183,3 +192,30 @@ As with all transitions, they must yield a successful transition validation.
 
 Notice, these two transitions are fundamentally identical -- removing the person from the state's internal list of
 items. The transition names are simply semantic.
+
+Performing Transitions
+----------------------
+
+With the above TSM configuration we can now make friends and enemies!::
+
+    # Declare some people as friends
+    friends = [Friend("Jonathan", "I love myself"), Friend("Chris", "Cool dude"), Friend("James", "Nice guy")]
+
+    # We 'track' each friend in the relevant state
+    for friend in friends:
+        tsm.state("Friends").track(friend)
+
+    # Jonathan annoyed us, he's now an enemy
+    tsm.transition("falling_out", Friend("Jonathan", None), Friend("Jonathan", "I hate myself"))
+
+So the way we perform transitions is of the form::
+
+    transition(TRANSITION_NAME, FROM_STATE_ITEM, TO_STATE_ITEM)
+
+When we un-friended Jonathan above, we had to re-create a ``Friend`` object to specify him to each state,
+the first time we didn't bother giving a reason because we knew that ``FriendshipState`` isn't interested in the
+reason for removing a person.
+
+So we can immediately see some poor design issues cropping up:
+* ``Friend`` items are exposed outside of the TSM
+* We must create ``Friend`` items and know which parameters are useful in which context.
