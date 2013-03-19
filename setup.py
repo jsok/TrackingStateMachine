@@ -7,8 +7,8 @@ setup(
     author_email='jonathan.sokolowski@gmail.com',
     packages=['tracking_state_machine', 'tracking_state_machine.test'],
     url='http://pypi.python.org/pypi/TrackingStateMachine/',
-    license='LICENSE.txt',
+    license='LICENSE',
     description='State machine which can simultaneously track items in all states and manage transitions.',
-    long_description=open('README.rst').read(),
+    long_description="A State Machine which can simultaneously track many items in all states and manage transitions.",
     install_requires=[],
 )
