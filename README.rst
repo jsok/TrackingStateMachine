@@ -134,12 +134,12 @@ Say we modify our example and create a "No Jonathans rule", e.g. one Jonathan is
             return None
 
         def _track(self, item):
-        if self.__know_person("Jonathan"):
-            yield TransitionValidationResult(False, "I already know one Jonathan")
+            if self.__know_person("Jonathan"):
+                yield TransitionValidationResult(False, "I already know one Jonathan")
 
-        # I'm happy to accept all other names at this point however
-        yield TransitionValidationResult(True, None)
-        self.items.append(item)
+            # I'm happy to accept all other names at this point however
+            yield TransitionValidationResult(True, None)
+            self.items.append(item)
 
 Here we see the guidelines in practise, an item ensures the name is actually a string, but in and of itself,
 it has no capacity to check if there exists another item also called Jonathan.
@@ -258,15 +258,15 @@ reason is supplied at one point -- when tracking a new ``Friend``, i.e.::
 
     class FriendshipState(TrackingState):
         def _track(self, item):
-        if not item.reason:
-            yield TransitionValidationResult(False, "You must supply a reason")
+            if not item.reason:
+                yield TransitionValidationResult(False, "You must supply a reason")
 
-        if "Jonathan" in self.items:
-            yield TransitionValidationResult(False, "I already have one Jonathan")
+            if "Jonathan" in self.items:
+                yield TransitionValidationResult(False, "I already have one Jonathan")
 
-        # I'm happy to accept all other names at this point however
-        yield TransitionValidationResult(True, None)
-        self.items.append(item)
+            # I'm happy to accept all other names at this point however
+            yield TransitionValidationResult(True, None)
+            self.items.append(item)
 
 Transition Parameters
 ---------------------
