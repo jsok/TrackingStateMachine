@@ -90,9 +90,12 @@ class TrackingState(object):
         raise NotImplementedError()  # pragma: no cover
 
     def get(self, key):
-        tracked_item = self._get(key)
-        if tracked_item:
-            return tracked_item.export()
+        obj = self._get(key)
+        if obj:
+            if isinstance(obj, list):
+                return map(lambda o: o.export(), obj)
+            else:
+                return obj.export()
         else:
             return None
 
