@@ -42,7 +42,7 @@ Next we define a state::
             yield TransitionValidationResult(True, None)
             self.items.append(item)
 
-This is a a trivial state which stores a list of ``Friend``s which currently exist in it.
+This is a a trivial state which stores a list of ``Friend`` s which currently exist in it.
 
 The ``_track()`` method tells the TSM what to do with items transitioning into this state.
 An important note to make is the ``yield`` statement in ``_track()``::
@@ -253,7 +253,7 @@ However to enable this, we need to change how we init our ``TrackingItem``, in t
                 (lambda item: item.name is not None),
             ])
 
-Notice we don't validate the ``reason``, this is because ``reason``s presence is optional. We actually only care if a
+Notice we don't validate the ``reason``, this is because ``reason`` s presence is optional. We actually only care if a
 reason is supplied at one point -- when tracking a new ``Friend``, i.e.::
 
     class FriendshipState(TrackingState):
@@ -278,7 +278,7 @@ Dictionary based items didn't solve one problem:
 If we accidentally mis-typed the name the second time, we could risk never getting our Friend back!
 
 TSM provides a mechanism for the *-from-* state to communicate paramaters to the *-to-* state via
-``TransitionParamater`` objects, which can be inserted into dictionary items as follows:
+``TransitionParamater`` objects, which can be inserted into dictionary items as follows::
 
     tsm.transition("falling_out",
                    {"name": "Jonathan"},
