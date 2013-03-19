@@ -22,14 +22,14 @@ Defining States and Items
 
 First we must describe the items we will be storing in each state::
 
-   class Friend(TrackingItem):
-       def __init__(self, name, reason):
-           super(self.__class__, self).__init__()
-           self.name = name
-           self.reason
+    class Friend(TrackingItem):
+        def __init__(self, name, reason):
+            super(self.__class__, self).__init__()
+            self.name = name
+            self.reason
+
 
 Here we define a simple item which does nothing but store a name, and a reason why we are friends with them.
-
 
 Next we define a state::
 
@@ -41,7 +41,6 @@ Next we define a state::
         def _track(self, item):
             yield TransitionValidationResult(True, None)
             self.items.append(item)
-
 
 This is a a trivial state which stores a list of ``Friend``s which currently exist in it.
 
@@ -91,7 +90,7 @@ Checking the name on each track event is a little bit tedious, therefore TSM pro
                 (lambda item: item.name is not "Jonathan"),
             ])
 
-TrackingItem.validations is a list of lambdas which are applied to the item, if any of them are False, the item is
+``TrackingItem.validations`` is a list of lambdas which are applied to the item, if any of them are False, the item is
 deemed as invalid.
 
 This validation mechanism is used by TSM automatically, any items which are tracked (explicitly, or implicitly via
@@ -127,9 +126,16 @@ Say we modify our example and create a "No Jonathans rule", e.g. one Jonathan is
             super(self.__class__, self).__init__(name, Friend)
             self.items = []
 
+        def __know_person(self, name):
+            # Return index of person if we know them, otherwise None
+            for i, person in enumerate(self.items):
+                if person.name == name:
+                    return i
+            return None
+
         def _track(self, item):
-        if "Jonathan" in self.items:
-            yield TransitionValidationResult(False, "I already have one Jonathan")
+        if self.__know_person("Jonathan"):
+            yield TransitionValidationResult(False, "I already know one Jonathan")
 
         # I'm happy to accept all other names at this point however
         yield TransitionValidationResult(True, None)
@@ -218,7 +224,93 @@ When we un-friended Jonathan above, we had to re-create a ``Friend`` object to s
 the first time we didn't bother giving a reason because we knew that ``FriendshipState`` isn't interested in the
 reason for removing a person.
 
-So we can immediately see some poor design issues cropping up:
+Dictionary Based Items
+----------------------
 
-* ``Friend`` items are exposed outside of the TSM
-* We must create ``Friend`` items and know which parameters are useful in which context.
+Performing some transitions immediately exposes some annoyances:
+
+* ``Friend`` items are exposed outside of the TSM.
+* We must create ``Friend`` items and know which parameters are useful in which context. e.g. When can I set the
+  Friendship reason to ``None``?
+
+To address these two issues, TSM allows dictionary items to be used when performing transitions::
+
+    # Previously, to un-friend Jonathan
+    tsm.transition("falling_out", Friend("Jonathan", None), Friend("Jonathan", "I hate myself"))
+
+    # Now with dictionary items
+    tsm.transition("falling_out", {"name": "Jonathan"}, {"name": "Jonathan", "reason": "I hate myself"})
+
+However to enable this, we need to change how we init our ``TrackingItem``, in this case ``Friend``::
+
+    class Friend(TrackingItem):
+        def __init__(self, properties):
+            super(self.__class__, self).__init__()
+            self.name = properties.get("name")
+            self.reason = properties.get("reason")
+
+            self.validations.extend([
+                (lambda item: item.name is not None),
+            ])
+
+Notice we don't validate the ``reason``, this is because ``reason``s presence is optional. We actually only care if a
+reason is supplied at one point -- when tracking a new ``Friend``, i.e.::
+
+    class FriendshipState(TrackingState):
+        def _track(self, item):
+        if not item.reason:
+            yield TransitionValidationResult(False, "You must supply a reason")
+
+        if "Jonathan" in self.items:
+            yield TransitionValidationResult(False, "I already have one Jonathan")
+
+        # I'm happy to accept all other names at this point however
+        yield TransitionValidationResult(True, None)
+        self.items.append(item)
+
+Transition Parameters
+---------------------
+
+Dictionary based items didn't solve one problem:
+
+* We still need to mention **Jonathan** twice in our transition.
+
+If we accidentally mis-typed the name the second time, we could risk never getting our Friend back!
+
+TSM provides a mechanism for the *-from-* state to communicate paramaters to the *-to-* state via
+``TransitionParamater`` objects, which can be inserted into dictionary items as follows:
+
+    tsm.transition("falling_out",
+                   {"name": "Jonathan"},
+                   {"name": TransitionParameter("name"), "reason": "I hate myself"})
+
+What we want to achieve here is to have the *-from-* state fill in the name for us. This requires one small tweak in
+how our state transitions::
+
+    class FriendshipState(TrackingState):
+        def __remove_name(self, name):
+            known = self.__know_person(name)
+            if not known:
+                yield TransitionValidationResult(False, "Person {0} is not known to us".format(name))
+
+            # We've made sure person exists and is in this state
+            success = TransitionValidationResult(True, None)
+            success.add_parameter("name", name)
+            yield success
+
+            self.items.pop(known)
+
+        def falling_out(self, item):
+            return self.__remove_name(item.name)
+
+        def resolve_differences(self, item):
+            return self.__remove_name(item.name)
+
+A state communicates which, after transition validation succeeds, a list of parameters which may be useful to the
+next state.
+
+It is also possible to provide a default value in the case where the *-from-* state fails to provide us with a
+paramater::
+
+    {"name": TransitionParameter("name"), "foo": TransitionParamater("foo", value="Default Foo")}
+
