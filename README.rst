@@ -314,3 +314,80 @@ paramater::
 
     {"name": TransitionParameter("name"), "foo": TransitionParamater("foo", value="Default Foo")}
 
+
+State Actions
+-------------
+
+Sometimes we want to perform some action on the items tracked in a state. Since these can be quite varied,
+state actions are fairly free to do what they like.
+
+Like transitions, we must register them with the TSM and create methods with corresponding names on the state::
+
+    tsm = TrackingStateMachine()
+
+    tsm.add_state(FriendshipState("Friend"))
+    tsm.add_state(FriendshipState("Enemy"))
+
+    tsm.add_action("upper_case", "Friend")
+
+And the action definition::
+
+    class FriendshipState(TrackingState):
+        def upper_case(self, args):
+            initial = args.get("initial", None)
+
+            if not initial:
+                raise TransitionActionError("Must provide the intial of the person to upper case")
+
+            for person in self.items:
+                if person.name.upper().startswith(initial.upper()):
+                    person.name = person.name.upper()
+
+To issue the action we simply::
+
+    tsm.action("upper_case", {"initial": 'J'})
+
+Note, that this action, although technically defined on the ``Enemy`` state, isn't registered with the TSM because
+when we registered the action, we specified that the action was on the ``Friend`` state.
+
+Querying States
+---------------
+
+``TrackingState`` provides a ``get`` method, we can make use of it and are free to scope its functionality as we
+please::
+
+    class Friend(TrackingState):
+        def _get(self, initial=None):
+            """Return all known persons with the given initial, otherwise return all persons"""
+
+            matches = []
+            for person in self.items:
+                if not initial:
+                    matches.append(person)
+                elif person.name.upper().startswith(initial.upper()):
+                    matches.append(person)
+
+            # A bit contrived, but shows all our possible return forms
+            if not matches:
+                return None
+            elif len(matches) == 1:
+                return matches[0]
+            else:
+                return mactches
+
+When implementing ``_get`` (note the underscore), you are free to return either:
+
+* ``None`` -- if your criteria matched nothing
+* An instance of ``TrackingItem``
+* A list of ``TrackingItem``
+
+Items retrieved using ``get`` are always exported as dicts::
+
+    > tsm.state("Friend").get(initial='J')
+    {"name": "Jonathan", "reason": "I love myself"}
+
+    > tsm.state("Friend").get(initial='Z')
+    None
+
+    > tsm.state("Friend").get()
+    [{"name": "Jonathan", "reason": "I love myself"}, {...}, {...}, etc ]
